@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestione Biblioteca</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f0f2f5; color: #333; }
+        .section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        h1, h2 { color: #007bff; }
+        .search-container { margin-bottom: 15px; display: flex; gap: 10px; }
+        input { padding: 8px; flex-grow: 1; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; transition: 0.3s; }
+        .btn-search { background-color: #007bff; color: white; }
+        .btn-search:hover { background-color: #0056b3; }
+        .btn-delete { background-color: #dc3545; color: white; padding: 4px 8px; font-size: 0.8em; }
+        .btn-delete:hover { background-color: #a71d2a; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background-color: #f8f9fa; }
+        tr:hover { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+
+    <h1>Dashboard Biblioteca</h1>
+
+    <div class="section">
+        <h2>Gestione Autori</h2>
+        <div class="search-container">
+            <input type="text" id="searchAutore" placeholder="Cerca autore per cognome...">
+            <button class="btn-search" onclick="cerca('autore')">Cerca</button>
+            <button onclick="caricaDati('autore')">Tutti</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th><th>Nome</th><th>Cognome</th><th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody id="bodyAutore"></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Gestione Libri</h2>
+        <div class="search-container">
+            <input type="text" id="searchLibro" placeholder="Cerca libro per titolo...">
+            <button class="btn-search" onclick="cerca('libro')">Cerca</button>
+            <button onclick="caricaDati('libro')">Tutti</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th><th>Titolo</th><th>Anno</th><th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody id="bodyLibro"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:8080/libwebapp/resources';
+
+        async function caricaDati(tipo) {
+            const endpoint = tipo === 'autore' ? '/autori' : '/libri';
+            try {
+                const response = await fetch(BASE_URL + endpoint);
+                const dati = await response.json();
+                renderTable(tipo, dati);
+            } catch (e) { console.error("Errore caricamento " + tipo, e); }
+        }
+
+        async function cerca(tipo) {
+            const endpoint = tipo === 'autore' ? '/autori' : '/libri';
+            const query = document.getElementById(tipo === 'autore' ? 'searchAutore' : 'searchLibro').value.toLowerCase();
+            
+            try {
+                const response = await fetch(BASE_URL + endpoint);
+                const dati = await response.json();
+                const filtrati = dati.filter(item => {
+                    const valore = tipo === 'autore' ? item.cognome : item.titolo;
+                    return valore.toLowerCase().includes(query);
+                });
+                renderTable(tipo, filtrati);
+            } catch (e) { console.error("Errore ricerca", e); }
+        }
+
+        async function elimina(tipo, id) {
+            if(!confirm("Sicuro di voler eliminare questo elemento?")) return;
+            
+            const endpoint = tipo === 'autore' ? `/autori/${id}` : `/libri/${id}`;
+            try {
+                const response = await fetch(BASE_URL + endpoint, { method: 'DELETE' });
+                if(response.ok) {
+                    alert("Eliminato con successo");
+                    caricaDati(tipo); // Ricarica la tabella
+                } else {
+                    alert("Errore durante l'eliminazione. Controlla se l'autore ha dei libri collegati!");
+                }
+            } catch (e) { console.error("Errore eliminazione", e); }
+        }
+
+        function renderTable(tipo, dati) {
+            const tbody = document.getElementById(tipo === 'autore' ? 'bodyAutore' : 'bodyLibro');
+            tbody.innerHTML = '';
+            dati.forEach(item => {
+                const row = tipo === 'autore' 
+                    ? `<td>${item.id}</td><td>${item.nome}</td><td>${item.cognome}</td>`
+                    : `<td>${item.id}</td><td>${item.titolo}</td><td>${item.anno}</td>`;
+                
+                tbody.innerHTML += `
+                    <tr>
+                        ${row}
+                        <td><button class="btn-delete" onclick="elimina('${tipo}', ${item.id})">Elimina</button></td>
+                    </tr>`;
+            });
+        }
+
+        window.onload = () => {
+            caricaDati('autore');
+            caricaDati('libro');
+        };
+    </script>
+</body>
+</html>
